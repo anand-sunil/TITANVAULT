@@ -66,11 +66,38 @@ export const VaultProvider = ({ children }) => {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        setVaultEntries(data);
-        localStorage.setItem('tv_vault_entries', JSON.stringify(data));
+        // Retrieve local items to retain poster images if Supabase table lacks poster_url column
+        const localSaved = (() => {
+          try {
+            const raw = localStorage.getItem('tv_vault_entries');
+            return raw ? JSON.parse(raw) : [];
+          } catch {
+            return [];
+          }
+        })();
+
+        const merged = data.map((cloudItem) => {
+          if (!cloudItem.poster_url) {
+            const match = localSaved.find(
+              (l) => l.title === cloudItem.title && (l.media_type === cloudItem.media_type || l.type === cloudItem.media_type)
+            );
+            if (match && (match.poster_url || match.poster)) {
+              return { ...cloudItem, poster_url: match.poster_url || match.poster };
+            }
+          }
+          return cloudItem;
+        });
+
+        // Also preserve any locally added entries that may not have synced to cloud yet
+        const cloudKeys = new Set(data.map((c) => `${c.title}__${c.media_type}`));
+        const localOnly = localSaved.filter((l) => !cloudKeys.has(`${l.title}__${l.media_type || l.type}`));
+        const allCombined = [...merged, ...localOnly];
+
+        setVaultEntries(allCombined);
+        localStorage.setItem('tv_vault_entries', JSON.stringify(allCombined));
 
         // Sync favorites from database
-        const favTitles = data.filter((item) => item.is_favorite).map((item) => item.title);
+        const favTitles = allCombined.filter((item) => item.is_favorite).map((item) => item.title);
         if (favTitles.length > 0) {
           setFavorites((prev) => new Set([...prev, ...favTitles]));
         }
@@ -142,6 +169,21 @@ export const VaultProvider = ({ children }) => {
       is_favorite: entry.is_favorite || false,
     };
 
+    const updateLocalStateAndStorage = (entryToSave) => {
+      setVaultEntries((prev) => {
+        const filtered = prev.filter(
+          (p) => !(p.title === entryToSave.title && (p.media_type === entryToSave.media_type || p.type === entryToSave.media_type))
+        );
+        const updated = [entryToSave, ...filtered];
+        try {
+          localStorage.setItem('tv_vault_entries', JSON.stringify(updated));
+        } catch (e) {
+          console.warn('Failed to save to localStorage:', e);
+        }
+        return updated;
+      });
+    };
+
     // If Supabase is connected and user is authenticated
     if (supabase && user) {
       const payload = {
@@ -149,40 +191,66 @@ export const VaultProvider = ({ children }) => {
         user_id: user.id,
       };
 
-      const { data, error } = await supabase
-        .from('vault_entries')
-        .upsert(payload, { onConflict: 'user_id, title, media_type' })
-        .select()
-        .single();
+      try {
+        let { data, error } = await supabase
+          .from('vault_entries')
+          .upsert(payload, { onConflict: 'user_id, title, media_type' })
+          .select()
+          .single();
 
-      if (error) {
-        console.error('Supabase upsert error:', error);
-        throw error;
+        // If error is PGRST204 (column 'poster_url' does not exist in schema cache), retry without poster_url column
+        if (error && (error.code === 'PGRST204' || error.message?.includes('poster_url'))) {
+          console.warn('Supabase table missing poster_url column. Retrying insert without poster_url...');
+          const { poster_url, ...payloadWithoutPoster } = payload;
+          const retry = await supabase
+            .from('vault_entries')
+            .upsert(payloadWithoutPoster, { onConflict: 'user_id, title, media_type' })
+            .select()
+            .single();
+
+          if (!retry.error) {
+            // Re-attach poster_url in memory so UI and local storage retain poster image
+            data = { ...retry.data, poster_url: formatted.poster_url };
+            error = null;
+          } else {
+            error = retry.error;
+          }
+        }
+
+        if (error) {
+          console.error('Supabase upsert error, falling back locally:', error);
+          const fallbackEntry = {
+            ...formatted,
+            id: 'local_' + Date.now(),
+            created_at: new Date().toISOString(),
+          };
+          updateLocalStateAndStorage(fallbackEntry);
+          return { success: true, cloud: false, localFallback: true };
+        }
+
+        // Successfully saved to Supabase
+        const finalSaved = { ...data, poster_url: data.poster_url || formatted.poster_url };
+        updateLocalStateAndStorage(finalSaved);
+        return { success: true, cloud: true, data: finalSaved };
+      } catch (err) {
+        console.error('Unexpected Supabase error, falling back locally:', err);
+        const fallbackEntry = {
+          ...formatted,
+          id: 'local_' + Date.now(),
+          created_at: new Date().toISOString(),
+        };
+        updateLocalStateAndStorage(fallbackEntry);
+        return { success: true, cloud: false, localFallback: true };
       }
-
-      setVaultEntries((prev) => {
-        const filtered = prev.filter(
-          (p) => !(p.title === formatted.title && p.media_type === formatted.media_type)
-        );
-        const updated = [data, ...filtered];
-        localStorage.setItem('tv_vault_entries', JSON.stringify(updated));
-        return updated;
-      });
-
-      return { success: true, cloud: true, data };
     }
 
     // Local fallback for guest or unconfigured mode
-    setVaultEntries((prev) => {
-      const filtered = prev.filter(
-        (p) => !(p.title === formatted.title && p.media_type === formatted.media_type)
-      );
-      const localEntry = { ...formatted, id: 'local_' + Date.now(), created_at: new Date().toISOString() };
-      const updated = [localEntry, ...filtered];
-      localStorage.setItem('tv_vault_entries', JSON.stringify(updated));
-      return updated;
-    });
-
+    const localEntry = {
+      ...formatted,
+      id: 'local_' + Date.now(),
+      created_at: new Date().toISOString(),
+    };
+    updateLocalStateAndStorage(localEntry);
     return { success: true, cloud: false };
   };
 

@@ -145,15 +145,14 @@ export const AddToVault = () => {
         poster_url: selectedMedia.poster || null,
       });
       setIsCloudSaved(Boolean(res?.cloud));
+      setAddedNotice(true);
+      setTimeout(() => {
+        setAddedNotice(false);
+      }, 4000);
     } catch (err) {
       console.warn('Vault save error:', err);
       setIsCloudSaved(false);
     }
-
-    setAddedNotice(true);
-    setTimeout(() => {
-      setAddedNotice(false);
-    }, 4000);
   };
 
   // Close dropdown on outside click

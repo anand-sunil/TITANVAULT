@@ -32,6 +32,7 @@ export const Home = () => {
         g: Array.isArray(entry.genres) && entry.genres.length > 0 ? entry.genres[0] : 'All',
         type: entry.media_type,
         h: entry.poster_hue ?? 0,
+        poster: entry.poster_url || entry.poster || null,
       }));
   }, [vaultEntries]);
 
