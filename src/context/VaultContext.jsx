@@ -285,6 +285,61 @@ export const VaultProvider = ({ children }) => {
     });
   };
 
+  // Update Vault Entry (e.g. from Watchlist to Completed/Watched, or edit rating)
+  const updateVaultEntry = async (title, mediaType, updates) => {
+    setVaultEntries((prev) => {
+      const updated = prev.map((item) => {
+        if (item.title === title && (item.media_type === mediaType || item.type === mediaType)) {
+          return { ...item, ...updates };
+        }
+        return item;
+      });
+      try {
+        localStorage.setItem('tv_vault_entries', JSON.stringify(updated));
+      } catch (e) {
+        console.warn(e);
+      }
+      return updated;
+    });
+
+    if (supabase && user) {
+      try {
+        await supabase
+          .from('vault_entries')
+          .update(updates)
+          .match({ user_id: user.id, title, media_type: mediaType });
+      } catch (err) {
+        console.warn('Could not sync update to Supabase:', err);
+      }
+    }
+  };
+
+  // Delete Vault Entry
+  const deleteVaultEntry = async (title, mediaType) => {
+    setVaultEntries((prev) => {
+      const filtered = prev.filter(
+        (item) => !(item.title === title && (item.media_type === mediaType || item.type === mediaType))
+      );
+      try {
+        localStorage.setItem('tv_vault_entries', JSON.stringify(filtered));
+      } catch (e) {
+        console.warn(e);
+      }
+      return filtered;
+    });
+
+    if (supabase && user) {
+      try {
+        await supabase
+          .from('vault_entries')
+          .delete()
+          .match({ user_id: user.id, title, media_type: mediaType });
+      } catch (err) {
+        console.warn('Could not delete from Supabase:', err);
+      }
+    }
+  };
+
   const isFavorite = (title) => favorites.has(title);
 
   return (
@@ -303,6 +358,8 @@ export const VaultProvider = ({ children }) => {
         setSearchQuery,
         vaultEntries,
         addVaultEntry,
+        updateVaultEntry,
+        deleteVaultEntry,
         fetchVaultEntries,
         isSupabaseReady: isSupabaseConfigured(),
       }}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { PageBanner } from './PageBanner';
 import { FilterTools } from './FilterTools';
 import { MediaCard } from './MediaCard';
+import { MediaDetailModal } from './MediaDetailModal';
 
 export const MediaGridPage = ({
   pageKey,
@@ -11,6 +12,7 @@ export const MediaGridPage = ({
 }) => {
   const [filter, setFilter] = useState('All');
   const [sort, setSort] = useState(config.defaultSort);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   const sortOptions = useMemo(() => {
     return [config.defaultSort, 'Rating', 'Year', 'Title'].filter(
@@ -27,15 +29,44 @@ export const MediaGridPage = ({
       if (typeMap[filter]) {
         list = list.filter((i) => i.type === typeMap[filter]);
       } else {
-        list = list.filter((i) => i.g === filter);
+        const targetGenre = filter.toLowerCase().trim();
+        list = list.filter((i) => {
+          if (Array.isArray(i.genres) && i.genres.length > 0) {
+            return i.genres.some((g) => {
+              const gLower = g.toLowerCase().trim();
+              return (
+                gLower === targetGenre ||
+                gLower.includes(targetGenre) ||
+                targetGenre.includes(gLower)
+              );
+            });
+          }
+          if (i.g) {
+            const gLower = i.g.toLowerCase().trim();
+            return (
+              gLower === targetGenre ||
+              gLower.includes(targetGenre) ||
+              targetGenre.includes(gLower)
+            );
+          }
+          return false;
+        });
       }
     }
 
     // Sort
     if (sort === 'Rating') {
-      list.sort((a, b) => b.r - a.r);
+      list.sort((a, b) => {
+        const rA = a.r != null ? Number(a.r) : -1;
+        const rB = b.r != null ? Number(b.r) : -1;
+        return rB - rA;
+      });
     } else if (sort === 'Year') {
-      list.sort((a, b) => b.y - a.y);
+      list.sort((a, b) => {
+        const yA = a.y != null ? Number(a.y) : 0;
+        const yB = b.y != null ? Number(b.y) : 0;
+        return yB - yA;
+      });
     } else if (sort === 'Title') {
       list.sort((a, b) => a.t.localeCompare(b.t));
     }
@@ -65,7 +96,7 @@ export const MediaGridPage = ({
       <div className="grid">
         {filteredAndSortedList.length > 0 ? (
           filteredAndSortedList.map((item) => (
-            <MediaCard key={item.t} item={item} />
+            <MediaCard key={item.t} item={item} onSelect={setSelectedItem} />
           ))
         ) : (
           <div
@@ -101,6 +132,13 @@ export const MediaGridPage = ({
           </div>
         )}
       </div>
+
+      {selectedItem && (
+        <MediaDetailModal
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
     </>
   );
 };

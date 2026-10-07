@@ -1,13 +1,15 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HeroSection } from '../components/HeroSection';
 import { CurrentlyWatching } from '../components/CurrentlyWatching';
 import { MediaCard } from '../components/MediaCard';
+import { MediaDetailModal } from '../components/MediaDetailModal';
 import { useVault } from '../context/VaultContext';
 
 export const Home = () => {
   const rowRef = useRef(null);
   const { vaultEntries } = useVault();
+  const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
     document.body.classList.add('home');
@@ -30,6 +32,9 @@ export const Home = () => {
         y: entry.year || 2024,
         r: entry.rating || 8.0,
         g: Array.isArray(entry.genres) && entry.genres.length > 0 ? entry.genres[0] : 'All',
+        genres: entry.genres || [],
+        overview: entry.overview || '',
+        status: entry.status,
         type: entry.media_type,
         h: entry.poster_hue ?? 0,
         poster: entry.poster_url || entry.poster || null,
@@ -45,7 +50,7 @@ export const Home = () => {
         {recentlyWatched.length > 0 ? (
           <>
             {recentlyWatched.map((item) => (
-              <MediaCard key={item.t} item={item} />
+              <MediaCard key={item.t} item={item} onSelect={setSelectedItem} />
             ))}
             <button
               type="button"
@@ -67,6 +72,13 @@ export const Home = () => {
       </div>
 
       <CurrentlyWatching />
+
+      {selectedItem && (
+        <MediaDetailModal
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
     </>
   );
 };

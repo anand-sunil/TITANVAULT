@@ -1,13 +1,17 @@
 import React from 'react';
 import { useVault } from '../context/VaultContext';
 
-export const MediaCard = ({ item }) => {
+export const MediaCard = ({ item, onSelect }) => {
   const { isFavorite, toggleFavorite } = useVault();
   const fav = isFavorite(item.t);
   const posterUrl = item.poster || item.poster_url;
 
   return (
-    <div className="card" style={{ '--h': item.h }}>
+    <div
+      className="card"
+      style={{ '--h': item.h, cursor: onSelect ? 'pointer' : 'default' }}
+      onClick={() => onSelect && onSelect(item)}
+    >
       <div className="poster">
         {posterUrl ? (
           <img

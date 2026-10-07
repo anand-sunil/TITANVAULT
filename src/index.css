@@ -3029,5 +3029,462 @@ body.landing-mode {
   }
 }
 
+/* ========================================================
+   COMIC MEDIA DETAIL MODAL (DOSSIER)
+   ======================================================== */
+.comic-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.2s ease-out;
+}
 
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
+.comic-modal-container {
+  background: #0d0d14;
+  border: 4px solid var(--cream);
+  box-shadow: 10px 10px 0 #000, 0 0 35px rgba(255, 42, 58, 0.2);
+  width: 100%;
+  max-width: 860px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.comic-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #000;
+  border-bottom: 3px solid var(--cream);
+}
+
+.cm-tag {
+  color: var(--yel);
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  font-family: 'Bangers', cursive, sans-serif;
+}
+
+.cm-close-btn {
+  background: var(--red);
+  color: #fff;
+  border: 2px solid #fff;
+  padding: 4px 14px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000;
+  transition: transform 0.1s, background 0.1s;
+}
+
+.cm-close-btn:hover {
+  background: #ff4d5d;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #000;
+}
+
+.comic-modal-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 28px;
+  padding: 24px;
+}
+
+.cm-poster-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cm-poster-frame {
+  position: relative;
+  aspect-ratio: 2/3;
+  width: 100%;
+  background: #111;
+  border: 3px solid #000;
+  box-shadow: 6px 6px 0 #000;
+  overflow: hidden;
+}
+
+.cm-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cm-poster-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--yel);
+  font-size: 24px;
+  padding: 16px;
+  text-align: center;
+}
+
+.cm-fav-btn {
+  background: #151522;
+  color: #fff;
+  border: 2px solid #444;
+  padding: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.cm-fav-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.cm-fav-btn.fav-on {
+  background: var(--red);
+  color: #fff;
+  border-color: #fff;
+  box-shadow: 3px 3px 0 #000;
+}
+
+.cm-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cm-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 2px solid #222;
+  padding-bottom: 8px;
+}
+
+.cm-title {
+  font-size: 36px;
+  color: var(--yel);
+  line-height: 1;
+  text-shadow: 3px 3px 0 #000;
+  transform: skew(-4deg);
+}
+
+.cm-year {
+  font-size: 18px;
+  background: var(--red);
+  color: #fff;
+  padding: 2px 8px;
+  border: 2px solid #fff;
+  box-shadow: 2px 2px 0 #000;
+}
+
+.cm-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cm-type-chip {
+  padding: 2px 10px;
+  font-size: 13px;
+  color: #000;
+  font-weight: bold;
+  border: 2px solid #000;
+}
+
+.cm-type-chip.type-movies { background: var(--red); color: #fff; }
+.cm-type-chip.type-anime { background: #b36bff; color: #fff; }
+.cm-type-chip.type-series { background: #2f86ff; color: #fff; }
+
+.cm-genre-chip {
+  background: #1e1e2c;
+  color: #ccc;
+  padding: 2px 8px;
+  font-size: 13px;
+  border: 1px solid #333;
+}
+
+.cm-overview-box {
+  background: #08080e;
+  border: 2px solid #222;
+  padding: 12px 16px;
+  position: relative;
+}
+
+.cm-overview-tag {
+  display: inline-block;
+  font-size: 12px;
+  background: var(--yel);
+  color: #000;
+  padding: 1px 6px;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+.cm-overview-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #bbb;
+  font-family: 'Oswald', sans-serif;
+  margin: 0;
+}
+
+.cm-section-label {
+  font-size: 14px;
+  color: var(--cream);
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.cm-status-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.cm-status-btn {
+  background: #161622;
+  color: #aaa;
+  border: 2px solid #333;
+  padding: 8px 10px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cm-status-btn:hover {
+  color: #fff;
+  border-color: #666;
+}
+
+.cm-status-btn.active {
+  background: var(--red);
+  color: #fff;
+  border-color: #fff;
+  box-shadow: 3px 3px 0 #000;
+  transform: translate(-1px, -1px);
+}
+
+.cm-rating-section {
+  background: #11111d;
+  border: 2px dashed #333;
+  padding: 12px 14px;
+}
+
+.cm-rating-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.cm-rating-score {
+  font-size: 18px;
+  color: var(--yel);
+}
+
+.cm-rating-buttons {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+
+.cm-rate-btn {
+  background: #000;
+  color: #fff;
+  border: 2px solid #333;
+  padding: 6px 0;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.cm-rate-btn:hover {
+  background: #222;
+  border-color: var(--yel);
+}
+
+.cm-rate-btn.active {
+  background: var(--yel);
+  color: #000;
+  border-color: #fff;
+  box-shadow: 2px 2px 0 #000;
+  font-weight: bold;
+}
+
+.cm-save-toast {
+  background: #0d381e;
+  border: 2px solid #25d366;
+  color: #25d366;
+  padding: 8px 14px;
+  font-size: 15px;
+  text-align: center;
+  animation: pulseToast 0.5s infinite alternate;
+}
+
+@keyframes pulseToast {
+  from { opacity: 0.85; }
+  to { opacity: 1; }
+}
+
+.cm-footer-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.cm-save-btn {
+  flex: 2;
+  padding: 10px 16px;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.cm-delete-btn {
+  flex: 1;
+  background: #240a0c;
+  color: #ff6b77;
+  border: 2px solid #ff2a3a;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cm-delete-btn:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .comic-modal-body {
+    grid-template-columns: 1fr;
+  }
+  .cm-poster-col {
+    max-width: 220px;
+    margin: 0 auto;
+  }
+  .cm-rating-buttons {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+}
+
+/* ========================================================
+   INDIVIDUAL SEASON SELECTOR STYLES (ADD TO VAULT)
+   ======================================================== */
+.season-selector-section {
+  background: #090912;
+  border: 2px solid var(--cream);
+  box-shadow: 4px 4px 0 #000;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.season-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.season-selector-title {
+  font-size: 18px;
+  color: var(--yel);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.season-selector-badge {
+  font-size: 12px;
+  background: #222;
+  color: #ccc;
+  padding: 2px 8px;
+  border: 1px solid #444;
+}
+
+.season-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.season-card-btn {
+  background: #141420;
+  border: 2px solid #333;
+  padding: 10px 12px;
+  color: #ddd;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.season-card-btn:hover {
+  border-color: var(--yel);
+  background: #1a1a2b;
+  transform: translate(-1px, -1px);
+}
+
+.season-card-btn.active-season {
+  background: #1d0f28;
+  border: 2px solid var(--yel);
+  box-shadow: 3px 3px 0 #000;
+  color: #fff;
+  transform: translate(-2px, -2px);
+}
+
+.sc-name {
+  font-size: 16px;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.season-card-btn.active-season .sc-name {
+  color: var(--yel);
+}
+
+.sc-meta {
+  font-size: 11px;
+  color: #888;
+  font-family: 'Oswald', sans-serif;
+}
+
+.sc-logged-tag {
+  margin-top: 4px;
+  font-size: 10px;
+  background: #0d381e;
+  color: #25d366;
+  border: 1px solid #25d366;
+  padding: 1px 4px;
+  display: inline-block;
+  align-self: flex-start;
+  font-weight: bold;
+}

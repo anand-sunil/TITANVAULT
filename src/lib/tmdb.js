@@ -121,10 +121,52 @@ export const getTMDBDetails = async (id, mediaType = 'movies') => {
       : ['General'];
 
     let seasonsInfo = '';
+    let seasonsList = [];
     if (mediaType !== 'movies') {
       const sCount = data.number_of_seasons || 1;
       const epCount = data.number_of_episodes || 0;
       seasonsInfo = `${sCount} Season${sCount > 1 ? 's' : ''} • ${epCount} Episode${epCount !== 1 ? 's' : ''}`;
+
+      const rawSeasons = Array.isArray(data.seasons) ? data.seasons : [];
+      // Filter out season_number === 0 (specials) unless it's the only season available
+      const regularSeasons = rawSeasons.filter((s) => s.season_number > 0);
+      const validSeasons = regularSeasons.length > 0 ? regularSeasons : rawSeasons;
+
+      seasonsList = validSeasons.map((s) => {
+        const sYear = s.air_date ? new Date(s.air_date).getFullYear() : year;
+        const sPoster = s.poster_path
+          ? `${IMAGE_BASE_URL}${s.poster_path}`
+          : data.poster_path
+          ? `${IMAGE_BASE_URL}${data.poster_path}`
+          : null;
+        const epText = s.episode_count
+          ? `${s.episode_count} Episode${s.episode_count !== 1 ? 's' : ''}`
+          : '';
+        return {
+          season_number: s.season_number,
+          name: s.name || `Season ${s.season_number}`,
+          episode_count: s.episode_count || 0,
+          epText,
+          year: sYear,
+          poster: sPoster,
+          overview: s.overview || data.overview || '',
+        };
+      });
+
+      // If TMDB reported multiple seasons but didn't list season objects, generate fallback numbers
+      if (seasonsList.length === 0 && sCount > 0) {
+        for (let i = 1; i <= sCount; i++) {
+          seasonsList.push({
+            season_number: i,
+            name: `Season ${i}`,
+            episode_count: Math.round(epCount / sCount) || 12,
+            epText: `${Math.round(epCount / sCount) || 12} Episodes`,
+            year: year,
+            poster: data.poster_path ? `${IMAGE_BASE_URL}${data.poster_path}` : null,
+            overview: data.overview || '',
+          });
+        }
+      }
     }
 
     let duration = '';
@@ -144,6 +186,7 @@ export const getTMDBDetails = async (id, mediaType = 'movies') => {
       id: data.id,
       tmdb_id: data.id,
       title,
+      baseTitle: title,
       year,
       type: mediaType,
       typeLabel: mediaType === 'movies' ? 'Movie' : mediaType === 'anime' ? 'Anime' : 'Series',
@@ -152,6 +195,7 @@ export const getTMDBDetails = async (id, mediaType = 'movies') => {
       backdrop: data.backdrop_path ? `${IMAGE_BASE_URL}${data.backdrop_path}` : null,
       overview: data.overview || 'No synopsis available in archives.',
       seasons: seasonsInfo,
+      seasonsList,
       duration,
       hue,
       tagline: data.tagline ? data.tagline.toUpperCase() : '',

@@ -28,8 +28,56 @@ export const AddToVault = () => {
   const [isCloudSaved, setIsCloudSaved] = useState(false);
   const dropdownRef = useRef(null);
 
-  const { addVaultEntry } = useVault();
+  // 7. Individual Season Selection ('all' or season_number)
+  const [selectedSeason, setSelectedSeason] = useState('all');
+
+  const { addVaultEntry, vaultEntries } = useVault();
   const tmdbReady = isTMDBConfigured();
+
+  // Selected Season Object
+  const currentSeasonObj = useMemo(() => {
+    if (!selectedMedia || selectedSeason === 'all') return null;
+    return selectedMedia.seasonsList?.find((s) => s.season_number === selectedSeason) || null;
+  }, [selectedMedia, selectedSeason]);
+
+  // Derived active title, poster, year, seasons string
+  const activeTitle = useMemo(() => {
+    if (!selectedMedia) return '';
+    if (currentSeasonObj) {
+      const base = selectedMedia.baseTitle || selectedMedia.title;
+      return `${base} - ${currentSeasonObj.name}`;
+    }
+    return selectedMedia.title;
+  }, [selectedMedia, currentSeasonObj]);
+
+  const activePoster = useMemo(() => {
+    if (currentSeasonObj?.poster) return currentSeasonObj.poster;
+    return selectedMedia?.poster || null;
+  }, [selectedMedia, currentSeasonObj]);
+
+  const activeYear = useMemo(() => {
+    if (currentSeasonObj?.year) return currentSeasonObj.year;
+    return selectedMedia?.year || 2024;
+  }, [selectedMedia, currentSeasonObj]);
+
+  const activeSeasonsText = useMemo(() => {
+    if (currentSeasonObj) {
+      return `${currentSeasonObj.name} • ${currentSeasonObj.epText || (currentSeasonObj.episode_count + ' Episodes')}`;
+    }
+    return selectedMedia?.seasons || '';
+  }, [selectedMedia, currentSeasonObj]);
+
+  // Check if a specific season is already logged in user's vaultEntries
+  const isSeasonLogged = useCallback((seasonNum) => {
+    if (!selectedMedia || !vaultEntries) return false;
+    const base = (selectedMedia.baseTitle || selectedMedia.title).toLowerCase();
+    if (seasonNum === 'all') {
+      return vaultEntries.some((v) => v.title.toLowerCase() === base);
+    }
+    const sObj = selectedMedia.seasonsList?.find((s) => s.season_number === seasonNum);
+    const targetTitle = sObj ? `${base} - ${sObj.name}`.toLowerCase() : `${base} - season ${seasonNum}`.toLowerCase();
+    return vaultEntries.some((v) => v.title.toLowerCase() === targetTitle);
+  }, [selectedMedia, vaultEntries]);
 
   // Status options per media type
   const statusOptions = useMemo(() => {
@@ -89,6 +137,7 @@ export const AddToVault = () => {
     setSearchQuery(item.title);
     setIsSearchFocused(false);
     setSelectedMedia(item);
+    setSelectedSeason('all');
 
     // If it has a TMDB ID, fetch enhanced details (genres, runtime, seasons)
     if (item.tmdb_id && tmdbReady) {
@@ -115,6 +164,7 @@ export const AddToVault = () => {
 
   const handleClearSelection = () => {
     setSelectedMedia(null);
+    setSelectedSeason('all');
     setSearchQuery('');
     setTmdbResults([]);
   };
@@ -122,6 +172,7 @@ export const AddToVault = () => {
   const handleTabChange = (type) => {
     setMediaType(type);
     setTmdbResults([]);
+    setSelectedSeason('all');
     // If selected media doesn't match new type, clear it
     if (selectedMedia && selectedMedia.type !== type) {
       setSelectedMedia(null);
@@ -133,16 +184,16 @@ export const AddToVault = () => {
 
     try {
       const res = await addVaultEntry({
-        title: selectedMedia.title,
+        title: activeTitle,
         media_type: selectedMedia.type || mediaType,
         status: status,
         rating: shouldAskRating ? rating : null,
-        year: selectedMedia.year || 2024,
+        year: activeYear,
         genres: selectedMedia.genres || [],
-        overview: selectedMedia.overview || '',
-        seasons: selectedMedia.seasons || '',
+        overview: currentSeasonObj?.overview || selectedMedia.overview || '',
+        seasons: activeSeasonsText,
         poster_hue: selectedMedia.hue || 0,
-        poster_url: selectedMedia.poster || null,
+        poster_url: activePoster,
       });
       setIsCloudSaved(Boolean(res?.cloud));
       setAddedNotice(true);
@@ -378,17 +429,17 @@ export const AddToVault = () => {
             {/* POSTER COLUMN */}
             <div className="selected-poster-column">
               <div className="selected-poster-card" style={{ '--h': selectedMedia.hue }}>
-                {selectedMedia.poster ? (
+                {activePoster ? (
                   <img
-                    src={selectedMedia.poster}
-                    alt={selectedMedia.title}
+                    src={activePoster}
+                    alt={activeTitle}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
                   />
                 ) : null}
                 <div className="poster-comic-texture">
                   <div className="poster-ben-day-dots"></div>
-                  {!selectedMedia.poster && (
-                    <div className="poster-title-stamp bg">{selectedMedia.title}</div>
+                  {!activePoster && (
+                    <div className="poster-title-stamp bg">{activeTitle}</div>
                   )}
                   {shouldAskRating && (
                     <div className="poster-rating-stamp bg">★ {rating}</div>
@@ -404,8 +455,8 @@ export const AddToVault = () => {
             {/* DETAILS COLUMN */}
             <div className="selected-details-column">
               <div className="selected-header-row">
-                <h2 className="selected-title bg">{selectedMedia.title}</h2>
-                <span className="selected-year-badge bg">{selectedMedia.year}</span>
+                <h2 className="selected-title bg">{activeTitle}</h2>
+                <span className="selected-year-badge bg">{activeYear}</span>
               </div>
 
               <div className="selected-meta-chips">
@@ -424,21 +475,66 @@ export const AddToVault = () => {
               </div>
 
               {/* SERIES / ANIME SEASON INFO */}
-              {(selectedMedia.type === 'anime' || selectedMedia.type === 'series') && selectedMedia.seasons && (
+              {(selectedMedia.type === 'anime' || selectedMedia.type === 'series') && activeSeasonsText && (
                 <div className="selected-season-panel">
                   <div className="season-icon bg">EP</div>
                   <div className="season-text">
                     <strong className="season-heading bg">ARCHIVE STRUCTURE:</strong>
-                    <span className="season-detail">{selectedMedia.seasons}</span>
+                    <span className="season-detail">{activeSeasonsText}</span>
                   </div>
                 </div>
               )}
+
+              {/* INDIVIDUAL SEASON SELECTOR FOR ANIME / SERIES */}
+              {(selectedMedia.type === 'anime' || selectedMedia.type === 'series') &&
+                selectedMedia.seasonsList &&
+                selectedMedia.seasonsList.length > 0 && (
+                  <div className="season-selector-section">
+                    <div className="season-selector-header">
+                      <h3 className="season-selector-title bg">CHOOSE SEASON TO LOG</h3>
+                      <span className="season-selector-badge bg">
+                        LOG EACH SEASON SEPARATELY WITH ITS OWN RATING
+                      </span>
+                    </div>
+
+                    <div className="season-buttons-grid">
+                      <button
+                        type="button"
+                        className={`season-card-btn ${selectedSeason === 'all' ? 'active-season' : ''}`}
+                        onClick={() => setSelectedSeason('all')}
+                      >
+                        <span className="sc-name bg">★ ENTIRE SERIES</span>
+                        <span className="sc-meta">{selectedMedia.seasons}</span>
+                        {isSeasonLogged('all') && <span className="sc-logged-tag bg">✓ IN VAULT</span>}
+                      </button>
+
+                      {selectedMedia.seasonsList.map((s) => (
+                        <button
+                          key={s.season_number}
+                          type="button"
+                          className={`season-card-btn ${selectedSeason === s.season_number ? 'active-season' : ''}`}
+                          onClick={() => setSelectedSeason(s.season_number)}
+                        >
+                          <span className="sc-name bg">{s.name}</span>
+                          <span className="sc-meta">
+                            {s.epText || `${s.episode_count} Episodes`} • {s.year}
+                          </span>
+                          {isSeasonLogged(s.season_number) && (
+                            <span className="sc-logged-tag bg">✓ IN VAULT</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
               {/* SYNOPSIS */}
               <div className="selected-overview-box">
                 <div className="overview-corner-tab bg">SYNOPSIS // TMDB DOSSIER</div>
                 <p className="overview-text">
-                  {loadingDetails ? 'Fetching complete synopsis...' : selectedMedia.overview}
+                  {loadingDetails
+                    ? 'Fetching complete synopsis...'
+                    : currentSeasonObj?.overview || selectedMedia.overview}
                 </p>
               </div>
 
@@ -464,8 +560,6 @@ export const AddToVault = () => {
               </div>
 
               {/* 6. YOUR RATING SECTION */}
-              {/* CRITICAL RULE: When adding to Watchlist (or Watching/Dropped), DO NOT ask for rating! */}
-              {/* ONLY when completing ('Watched' or 'Completed') do we prompt for user rating! */}
               {shouldAskRating ? (
                 <div className="add-rating-section">
                   <div className="rating-header-row">
@@ -537,7 +631,13 @@ export const AddToVault = () => {
                   onClick={handleAddToVault}
                 >
                   <span className="btn-lightning">⚡</span>
-                  ADD TO VAULT →
+                  + ADD{' '}
+                  {selectedSeason === 'all'
+                    ? 'ENTIRE SERIES'
+                    : currentSeasonObj
+                    ? currentSeasonObj.name.toUpperCase()
+                    : 'SEASON'}{' '}
+                  TO VAULT →
                   <span className="btn-lightning">⚡</span>
                 </button>
 
@@ -550,7 +650,7 @@ export const AddToVault = () => {
                         {isCloudSaved ? '★ SAVED TO SUPABASE CLOUD VAULT! ★' : '★ SAVED TO LOCAL VAULT! ★'}
                       </strong>
                       <span className="toast-desc">
-                        "{selectedMedia.title}" locked in as {status.toUpperCase()}
+                        "{activeTitle}" locked in as {status.toUpperCase()}
                         {shouldAskRating ? ` with rating ${rating}/10!` : ' (unrated watchlist)!'}
                       </span>
                     </div>
