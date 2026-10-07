@@ -4,11 +4,29 @@ import { useVault } from '../context/VaultContext';
 export const MediaCard = ({ item }) => {
   const { isFavorite, toggleFavorite } = useVault();
   const fav = isFavorite(item.t);
+  const posterUrl = item.poster || item.poster_url;
 
   return (
     <div className="card" style={{ '--h': item.h }}>
       <div className="poster">
-        <span className="pt">{item.t}</span>
+        {posterUrl ? (
+          <img
+            src={posterUrl}
+            alt={item.t}
+            className="poster-img"
+            loading="lazy"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              zIndex: 0,
+            }}
+          />
+        ) : (
+          <span className="pt">{item.t}</span>
+        )}
       </div>
       <button
         type="button"
@@ -22,7 +40,13 @@ export const MediaCard = ({ item }) => {
         ♥
       </button>
       <div className="meta">
-        <span className="rt">★ {item.r}</span>
+        {item.r != null && item.r > 0 ? (
+          <span className="rt">★ {item.r}</span>
+        ) : (
+          <span className="rt" style={{ background: '#333', color: 'var(--cream)', fontSize: '10px' }}>
+            UNRATED
+          </span>
+        )}
         <strong>{item.t}</strong>
         <small>{item.y}</small>
       </div>

@@ -25,11 +25,15 @@ create table if not exists public.vault_entries (
   overview text,
   seasons text,
   poster_hue integer default 0,
+  poster_url text,
   is_favorite boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
   constraint unique_user_media unique (user_id, title, media_type)
 );
+
+-- Migration for existing tables:
+alter table public.vault_entries add column if not exists poster_url text;
 
 -- 3. Enable Row Level Security (RLS)
 alter table public.profiles enable row level security;

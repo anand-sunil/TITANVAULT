@@ -132,12 +132,13 @@ export const VaultProvider = ({ children }) => {
       title: entry.title,
       media_type: entry.media_type || entry.type,
       status: entry.status,
-      rating: Number(entry.rating),
+      rating: entry.rating != null ? Number(entry.rating) : null,
       year: entry.year ? Number(entry.year) : null,
       genres: entry.genres || [],
       overview: entry.overview || '',
       seasons: entry.seasons || '',
       poster_hue: entry.poster_hue ?? entry.hue ?? 0,
+      poster_url: entry.poster_url || entry.poster || null,
       is_favorite: entry.is_favorite || false,
     };
 
