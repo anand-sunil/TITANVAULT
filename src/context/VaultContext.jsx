@@ -110,6 +110,7 @@ export const VaultProvider = ({ children }) => {
         data: {
           username: username || email.split('@')[0],
         },
+        emailRedirectTo: `${window.location.origin}/login`,
       },
     });
     if (error) throw error;
