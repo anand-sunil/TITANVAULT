@@ -96,6 +96,35 @@ export const VaultProvider = ({ children }) => {
         setVaultEntries(allCombined);
         localStorage.setItem('tv_vault_entries', JSON.stringify(allCombined));
 
+        // Sync localOnly entries to Supabase cloud so they appear on other devices (phone, etc.)
+        if (localOnly.length > 0) {
+          (async () => {
+            for (const item of localOnly) {
+              try {
+                const syncPayload = {
+                  user_id: user.id,
+                  title: item.title,
+                  media_type: item.media_type || item.type,
+                  status: item.status,
+                  rating: item.rating != null ? Number(item.rating) : null,
+                  year: item.year ? Number(item.year) : null,
+                  genres: item.genres || [],
+                  overview: item.overview || '',
+                  seasons: item.seasons || '',
+                  poster_hue: item.poster_hue ?? item.hue ?? 0,
+                  poster_url: item.poster_url || item.poster || null,
+                  is_favorite: item.is_favorite || false,
+                };
+                await supabase
+                  .from('vault_entries')
+                  .upsert(syncPayload, { onConflict: 'user_id,title,media_type' });
+              } catch (syncErr) {
+                console.warn('Could not auto-sync local entry to Supabase:', item.title, syncErr);
+              }
+            }
+          })();
+        }
+
         // Sync favorites from database
         const favTitles = allCombined.filter((item) => item.is_favorite).map((item) => item.title);
         if (favTitles.length > 0) {
@@ -194,31 +223,43 @@ export const VaultProvider = ({ children }) => {
       try {
         let { data, error } = await supabase
           .from('vault_entries')
-          .upsert(payload, { onConflict: 'user_id, title, media_type' })
+          .upsert(payload, { onConflict: 'user_id,title,media_type' })
           .select()
-          .single();
+          .maybeSingle();
 
-        // If error is PGRST204 (column 'poster_url' does not exist in schema cache), retry without poster_url column
-        if (error && (error.code === 'PGRST204' || error.message?.includes('poster_url'))) {
-          console.warn('Supabase table missing poster_url column. Retrying insert without poster_url...');
-          const { poster_url, ...payloadWithoutPoster } = payload;
-          const retry = await supabase
+        // If upsert fails for any constraint/RLS edge-case, fallback to select-then-insert/update
+        if (error) {
+          console.warn('Upsert hit issue, trying direct select-then-save fallback:', error);
+          const { data: existing } = await supabase
             .from('vault_entries')
-            .upsert(payloadWithoutPoster, { onConflict: 'user_id, title, media_type' })
-            .select()
-            .single();
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('title', formatted.title)
+            .eq('media_type', formatted.media_type)
+            .maybeSingle();
 
-          if (!retry.error) {
-            // Re-attach poster_url in memory so UI and local storage retain poster image
-            data = { ...retry.data, poster_url: formatted.poster_url };
-            error = null;
+          if (existing?.id) {
+            const updateRes = await supabase
+              .from('vault_entries')
+              .update(payload)
+              .eq('id', existing.id)
+              .select()
+              .single();
+            data = updateRes.data;
+            error = updateRes.error;
           } else {
-            error = retry.error;
+            const insertRes = await supabase
+              .from('vault_entries')
+              .insert(payload)
+              .select()
+              .single();
+            data = insertRes.data;
+            error = insertRes.error;
           }
         }
 
         if (error) {
-          console.error('Supabase upsert error, falling back locally:', error);
+          console.error('Supabase save error, falling back locally:', error);
           const fallbackEntry = {
             ...formatted,
             id: 'local_' + Date.now(),
